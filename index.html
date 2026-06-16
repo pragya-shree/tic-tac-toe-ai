@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="draft">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic · Tac · Toe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@600;700;800&family=Sora:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ============================================
+       Welcome / Setup Screen
+       ============================================ -->
+  <div class="welcome-overlay" id="welcomeOverlay" aria-modal="true" role="dialog" aria-label="Game setup">
+    <div class="welcome-card" id="welcomeCard">
+
+      <!-- Header -->
+      <div class="welcome-header">
+        <p class="eyebrow">Field study — two players</p>
+        <h1 class="title">TIC <span class="dot">·</span> TAC <span class="dot">·</span> TOE</h1>
+        <p class="welcome-sub">Choose your mode, pick an avatar, enter your name.</p>
+      </div>
+
+      <!-- Mode selector -->
+      <div class="welcome-section">
+        <label class="welcome-label">Game mode</label>
+        <div class="segmented" id="welcomeModeSegmented" role="group" aria-label="Choose game mode">
+          <button class="segmented__btn is-active" data-mode="pvp" aria-pressed="true">Human vs Human</button>
+          <button class="segmented__btn" data-mode="pvc" aria-pressed="false">Human vs AI</button>
+        </div>
+      </div>
+
+      <!-- Difficulty (PvC only) -->
+      <div class="welcome-section welcome-section--difficulty is-hidden" id="welcomeDifficultySection">
+        <label class="welcome-label">AI difficulty</label>
+        <div class="segmented" id="welcomeDifficultySegmented" role="group" aria-label="Choose AI difficulty">
+          <button class="segmented__btn is-active" data-difficulty="easy"   aria-pressed="true">Easy</button>
+          <button class="segmented__btn"            data-difficulty="medium" aria-pressed="false">Medium</button>
+          <button class="segmented__btn"            data-difficulty="hard"   aria-pressed="false">Hard</button>
+        </div>
+      </div>
+
+      <!-- Player 1 -->
+      <div class="welcome-section">
+        <label class="welcome-label" id="p1Label">Player X — choose avatar &amp; name</label>
+        <div class="avatar-row" id="p1Avatars" role="group" aria-label="Player X avatar"></div>
+        <input
+          class="name-input"
+          id="p1Name"
+          type="text"
+          maxlength="20"
+          placeholder="Enter your name…"
+          aria-label="Player X name"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <!-- Player 2 / AI -->
+      <div class="welcome-section" id="p2Section">
+        <label class="welcome-label" id="p2Label">Player O — choose avatar &amp; name</label>
+        <div class="avatar-row" id="p2Avatars" role="group" aria-label="Player O avatar"></div>
+        <input
+          class="name-input"
+          id="p2Name"
+          type="text"
+          maxlength="20"
+          placeholder="Enter your name…"
+          aria-label="Player O name"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <!-- AI name (shown in PvC) -->
+        <div class="ai-name-row is-hidden" id="aiNameRow">
+          <input
+            class="name-input"
+            id="aiName"
+            type="text"
+            maxlength="20"
+            placeholder="AI name (optional)…"
+            aria-label="AI name"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <p class="welcome-hint">Leave blank to use "AI"</p>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <button class="btn btn--primary btn--lg" id="startGameBtn">Start game</button>
+
+    </div>
+  </div>
+
+  <!-- ============================================
+       Main Game
+       ============================================ -->
+  <main class="app" id="gameApp" aria-hidden="true">
+    <header class="app__header">
+      <p class="eyebrow">Field study — two players</p>
+      <h1 class="title">TIC <span class="dot">·</span> TAC <span class="dot">·</span> TOE</h1>
+      <p class="meta">NO. 001 &nbsp;·&nbsp; SCALE 1:1 &nbsp;·&nbsp; <span id="metaMode">PVP</span></p>
+    </header>
+
+    <section class="mode-select" aria-label="Game mode">
+      <div class="segmented" id="modeSegmented" role="group" aria-label="Choose game mode">
+        <button class="segmented__btn is-active" data-mode="pvp" aria-pressed="true">Human vs Human</button>
+        <button class="segmented__btn" data-mode="pvc" aria-pressed="false">Human vs AI</button>
+      </div>
+      <div class="segmented segmented--difficulty is-hidden" id="difficultySegmented" role="group" aria-label="Choose AI difficulty">
+        <button class="segmented__btn is-active" data-difficulty="easy"   aria-pressed="true">Easy</button>
+        <button class="segmented__btn"            data-difficulty="medium" aria-pressed="false">Medium</button>
+        <button class="segmented__btn"            data-difficulty="hard"   aria-pressed="false">Hard</button>
+      </div>
+    </section>
+
+    <section class="scoreboard" aria-label="Score">
+      <div class="score score--x" id="scoreX">
+        <span class="score__avatar" id="scoreXAvatar" aria-hidden="true"></span>
+        <span class="score__label" id="scoreXLabel">Player X</span>
+        <span class="score__value" id="scoreXValue">0</span>
+      </div>
+      <div class="score score--draw" id="scoreDraw">
+        <span class="score__label">Draws</span>
+        <span class="score__value" id="scoreDrawValue">0</span>
+      </div>
+      <div class="score score--o" id="scoreO">
+        <span class="score__avatar" id="scoreOAvatar" aria-hidden="true"></span>
+        <span class="score__label" id="scoreOLabel">Player O</span>
+        <span class="score__value" id="scoreOValue">0</span>
+      </div>
+    </section>
+
+    <p class="status" id="status" aria-live="polite">Player X's turn</p>
+
+    <div class="board-wrap">
+      <span class="crop crop--tl" aria-hidden="true"></span>
+      <span class="crop crop--tr" aria-hidden="true"></span>
+      <span class="crop crop--bl" aria-hidden="true"></span>
+      <span class="crop crop--br" aria-hidden="true"></span>
+
+      <div class="board board--enter" id="board">
+        <button class="cell" data-index="0" aria-label="Row 1, column 1"></button>
+        <button class="cell" data-index="1" aria-label="Row 1, column 2"></button>
+        <button class="cell" data-index="2" aria-label="Row 1, column 3"></button>
+        <button class="cell" data-index="3" aria-label="Row 2, column 1"></button>
+        <button class="cell" data-index="4" aria-label="Row 2, column 2"></button>
+        <button class="cell" data-index="5" aria-label="Row 2, column 3"></button>
+        <button class="cell" data-index="6" aria-label="Row 3, column 1"></button>
+        <button class="cell" data-index="7" aria-label="Row 3, column 2"></button>
+        <button class="cell" data-index="8" aria-label="Row 3, column 3"></button>
+
+        <svg class="win-line" id="winLine" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <line id="winLinePath" x1="0" y1="0" x2="0" y2="0" />
+        </svg>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn--primary" id="restartBtn">Restart round</button>
+      <button class="btn btn--ghost"   id="resetScoreBtn">Reset scores</button>
+      <button class="btn btn--ghost"   id="editPlayersBtn">Edit players</button>
+      <span class="controls__divider" aria-hidden="true"></span>
+      <button class="btn btn--icon" id="muteBtn" aria-pressed="false" aria-label="Mute sound">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 9 8 9 13 4 13 20 8 15 3 15 3 9"></polygon><path d="M16 8a5 5 0 0 1 0 8"></path><path d="M19 5a9 9 0 0 1 0 14"></path></svg>
+      </button>
+      <button class="btn btn--icon" id="themeBtn" aria-pressed="false" aria-label="Switch to blueprint mode">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2.5v2.4M12 19.1v2.4M4.4 4.4l1.7 1.7M17.9 17.9l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.4 19.6l1.7-1.7M17.9 6.1l1.7-1.7"></path></svg>
+      </button>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
