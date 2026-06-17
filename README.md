@@ -2,6 +2,8 @@
 
 A modern and interactive Tic-Tac-Toe web application built using **HTML, CSS, and JavaScript**. The project features multiple AI difficulty levels, player customization, match history tracking, game statistics, sound effects, and a responsive user interface.
 
+🚀 **Live Demo:** https://pragya-shree.github.io/tic-tac-toe-ai/
+
 ## 🚀 Features
 
 ### 🎯 Gameplay
