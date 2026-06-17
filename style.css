@@ -957,3 +957,487 @@ body {
   }
 }
 
+/* ============================================
+   Statistics Dashboard Panel
+   ============================================ */
+@keyframes stat-value-bump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.22); color: var(--accent); }
+  100% { transform: scale(1); }
+}
+
+@keyframes progress-fill-in {
+  from { width: 0%; }
+}
+
+@keyframes badge-pop {
+  0% { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+  60% { opacity: 1; transform: scale(1.08) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.stats-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: none;
+  align-items: stretch;
+  justify-content: flex-end;
+  background: rgba(15, 20, 28, 0.38);
+  backdrop-filter: blur(2px);
+  animation: history-overlay-in 0.25s var(--ease) both;
+}
+
+.stats-overlay.is-open {
+  display: flex;
+}
+
+.stats-overlay.is-exiting {
+  pointer-events: none;
+  animation: history-overlay-in 0.2s var(--ease) reverse both;
+}
+
+.stats-panel {
+  width: 100%;
+  max-width: 460px;
+  height: 100%;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow-deep);
+  display: flex;
+  flex-direction: column;
+  animation: history-panel-in 0.32s var(--ease) 0.02s both;
+  transition: background-color 0.45s var(--ease), border-color 0.45s var(--ease);
+}
+
+.stats-overlay.is-exiting .stats-panel {
+  animation: history-panel-in 0.22s var(--ease) reverse both;
+}
+
+.stats-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 22px 16px;
+  border-bottom: 1px solid var(--line);
+  transition: border-color 0.45s var(--ease);
+}
+
+.stats-title {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.stats-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px 10px;
+}
+
+.stats-empty {
+  margin: 40px 12px 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.stats-content.is-hidden,
+.stats-empty.is-hidden {
+  display: none;
+}
+
+.stats-section {
+  margin-bottom: 26px;
+}
+
+.stats-section:last-child {
+  margin-bottom: 6px;
+}
+
+.stats-section__title {
+  margin: 0 0 12px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* Stat card grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.stat-card {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 13px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.3s var(--ease), background-color 0.45s var(--ease);
+}
+
+.stat-card--wide {
+  grid-column: 1 / -1;
+}
+
+.stat-card__icon {
+  font-size: 1rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.stat-card__value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.45rem;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.stat-card__value.is-bumped {
+  animation: stat-value-bump 0.45s var(--ease);
+}
+
+.stat-card__label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* Progress bars */
+.progress-block {
+  margin-bottom: 12px;
+}
+
+.progress-block:last-child {
+  margin-bottom: 0;
+}
+
+.progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.progress-row__label {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.progress-row__value {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s var(--ease);
+}
+
+.progress-fill--win  { background: var(--accent); }
+.progress-fill--draw { background: var(--o-color); }
+.progress-fill--easy  { background: #6fae5b; }
+.progress-fill--medium{ background: var(--accent); }
+.progress-fill--hard  { background: var(--x-color); }
+
+/* AI stats list */
+.ai-stats-list,
+.player-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ai-stat-row {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  transition: border-color 0.3s var(--ease), background-color 0.45s var(--ease);
+}
+
+.ai-stat-row__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.ai-stat-row__title {
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ai-stat-row__record {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
+/* Player stats */
+.player-stat-row {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 0.3s var(--ease), background-color 0.45s var(--ease);
+}
+
+.player-stat-row__avatar {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.player-stat-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-stat-row__name {
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-stat-row__detail {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+.player-stat-row__crown {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+/* Badges */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  text-align: center;
+  transition: border-color 0.3s var(--ease), background-color 0.45s var(--ease), opacity 0.3s var(--ease);
+}
+
+.badge__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  filter: grayscale(1);
+  opacity: 0.35;
+}
+
+.badge__label {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  line-height: 1.3;
+}
+
+.badge.is-earned {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.badge.is-earned .badge__icon {
+  filter: none;
+  opacity: 1;
+}
+
+.badge.is-earned .badge__label {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.badge.is-new {
+  animation: badge-pop 0.5s var(--ease) both;
+}
+
+.stats-panel__footer {
+  padding: 16px 22px 22px;
+  border-top: 1px solid var(--line);
+  transition: border-color 0.45s var(--ease);
+}
+
+.stats-panel__footer .btn {
+  width: 100%;
+}
+
+.stats-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stats-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stats-body::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+@media (max-width: 460px) {
+  .stats-panel {
+    max-width: 100%;
+  }
+  .badge-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 360px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .stat-card__value {
+    font-size: 1.2rem;
+  }
+}
+
+/* ============================================
+   Confirmation Dialog
+   ============================================ */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 14, 20, 0.5);
+  backdrop-filter: blur(3px);
+  animation: history-overlay-in 0.2s var(--ease) both;
+}
+
+.confirm-overlay.is-open {
+  display: flex;
+}
+
+.confirm-overlay.is-exiting {
+  pointer-events: none;
+  animation: history-overlay-in 0.16s var(--ease) reverse both;
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-deep);
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: card-in 0.3s var(--ease) both;
+  transition: background-color 0.45s var(--ease), border-color 0.45s var(--ease);
+}
+
+.confirm-overlay.is-exiting .confirm-card {
+  animation: card-in 0.18s var(--ease) reverse both;
+}
+
+.confirm-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+.confirm-body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.confirm-actions .btn {
+  flex: 1;
+}
+
+.btn--danger {
+  background: var(--x-color);
+  color: #fff;
+  border-color: var(--x-color);
+}
+
+.btn--danger:hover {
+  background: #962f25;
+  border-color: #962f25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stats-overlay,
+  .stats-panel,
+  .stat-card__value,
+  .progress-fill,
+  .badge,
+  .confirm-overlay,
+  .confirm-card {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+

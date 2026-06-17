@@ -27,6 +27,7 @@
   const PLAYERS_STORAGE_KEY = "ttt-players"; // NEW — persists player profiles
   const HISTORY_STORAGE_KEY = "ttt-history"; // NEW — persists match history (localStorage)
   const HISTORY_LIMIT       = 20;             // NEW — cap stored matches at 20
+  const STATS_STORAGE_KEY   = "ttt-stats";    // NEW — persists statistics dashboard (localStorage)
 
   const SOUND_SOURCES = {
     click: "sounds/click.wav",
@@ -48,6 +49,41 @@
 
   const DEFAULT_AI_NAME   = "AI";
   const DEFAULT_AI_AVATAR = "🤖";
+
+  // Achievement badge definitions (NEW). Each `test` receives the full stats
+  // object and returns true/false for whether the badge is earned.
+  const BADGE_DEFS = [
+    {
+      id: "first-win",
+      icon: "🏅",
+      label: "First Win",
+      test: (s) => s.totalWins >= 1
+    },
+    {
+      id: "five-wins",
+      icon: "🏅",
+      label: "5 Wins",
+      test: (s) => s.totalWins >= 5
+    },
+    {
+      id: "ten-wins",
+      icon: "🏅",
+      label: "10 Wins",
+      test: (s) => s.totalWins >= 10
+    },
+    {
+      id: "ai-slayer",
+      icon: "🏅",
+      label: "AI Slayer",
+      test: (s) => s.ai.hard.wins >= 1
+    },
+    {
+      id: "unstoppable",
+      icon: "🏅",
+      label: "Unstoppable",
+      test: (s) => s.longestStreak >= 5
+    }
+  ];
 
   // Icon strings (mute / theme toggles)
   const ICON_VOLUME_ON =
@@ -117,6 +153,9 @@
   let difficulty    = "easy";  // "easy" | "medium" | "hard"
   let aiThinking    = false;
   let matchHistory  = loadHistory(); // NEW — array of completed match records
+  let stats         = loadStats();   // NEW — aggregated statistics object
+  let roundStartTime = Date.now();   // NEW — timestamp when current round began (for time-played tracking)
+  let earnedBadgeIds  = new Set((stats.badges || [])); // NEW — tracks which badges were already earned, to detect newly-unlocked ones
 
   // ============================================
   // DOM refs — game screen
@@ -157,6 +196,35 @@
   const clearHistoryBtn  = document.getElementById("clearHistoryBtn");
   const historyListEl    = document.getElementById("historyList");
   const historyEmptyEl   = document.getElementById("historyEmpty");
+
+  // DOM refs — statistics dashboard panel (NEW)
+  const statsBtn          = document.getElementById("statsBtn");
+  const statsOverlay       = document.getElementById("statsOverlay");
+  const closeStatsBtn      = document.getElementById("closeStatsBtn");
+  const resetStatsBtn      = document.getElementById("resetStatsBtn");
+  const statsEmptyEl       = document.getElementById("statsEmpty");
+  const statsContentEl     = document.getElementById("statsContent");
+  const statTotalGamesEl   = document.getElementById("statTotalGames");
+  const statTotalWinsEl    = document.getElementById("statTotalWins");
+  const statTotalLossesEl  = document.getElementById("statTotalLosses");
+  const statTotalDrawsEl   = document.getElementById("statTotalDraws");
+  const statWinRateLabelEl = document.getElementById("statWinRateLabel");
+  const statWinRateBarEl   = document.getElementById("statWinRateBar");
+  const statDrawRateLabelEl= document.getElementById("statDrawRateLabel");
+  const statDrawRateBarEl  = document.getElementById("statDrawRateBar");
+  const statCurrentStreakEl= document.getElementById("statCurrentStreak");
+  const statLongestStreakEl= document.getElementById("statLongestStreak");
+  const statAvgMovesEl     = document.getElementById("statAvgMoves");
+  const statFastestWinEl   = document.getElementById("statFastestWin");
+  const statTotalTimeEl    = document.getElementById("statTotalTime");
+  const aiStatsListEl      = document.getElementById("aiStatsList");
+  const playerStatsListEl  = document.getElementById("playerStatsList");
+  const badgeGridEl        = document.getElementById("badgeGrid");
+
+  // DOM refs — reset-statistics confirmation dialog (NEW)
+  const confirmOverlay    = document.getElementById("confirmOverlay");
+  const confirmCancelBtn  = document.getElementById("confirmCancelBtn");
+  const confirmResetBtn   = document.getElementById("confirmResetBtn");
 
   // DOM refs — welcome screen
   const welcomeOverlay       = document.getElementById("welcomeOverlay");
@@ -512,6 +580,365 @@
   }
 
   // ============================================
+  // Statistics Dashboard (NEW)
+  // Persisted to localStorage so stats survive across sessions, same as
+  // match history. This is intentionally a SEPARATE store from history —
+  // history is a capped log of the most recent 20 matches, while stats are
+  // an unbounded running aggregate computed incrementally on every match.
+  // ============================================
+
+  // Returns a brand-new, empty stats object. Used on first load and on reset.
+  function defaultStats() {
+    return {
+      totalGames: 0,
+      totalWins: 0,
+      totalLosses: 0,
+      totalDraws: 0,
+
+      currentStreak: 0,
+      longestStreak: 0,
+      totalMoves: 0,          // sum of moves across all games — used to derive the average
+      fastestWinMoves: null,  // fewest moves in any winning game (null = no win yet)
+      totalTimeMs: 0,         // cumulative time spent across all rounds
+
+      ai: {
+        easy:   { wins: 0, losses: 0 },
+        medium: { wins: 0, losses: 0 },
+        hard:   { wins: 0, losses: 0 }
+      },
+
+      // Keyed by player name (not mark — a name can occupy either mark
+      // across different rounds, so aggregating by mark would be misleading).
+      // Each entry: { games, wins }
+      playerTotals: {},
+
+      badges: [] // array of earned badge ids
+    };
+  }
+
+  function loadStats() {
+    try {
+      const raw = localStorage.getItem(STATS_STORAGE_KEY);
+      if (!raw) return defaultStats();
+      const parsed = JSON.parse(raw);
+      // Merge onto defaults so any newly-added fields in future versions
+      // don't break on an older stored shape.
+      const base = defaultStats();
+      return {
+        ...base,
+        ...parsed,
+        ai: { ...base.ai, ...(parsed.ai || {}) },
+        playerTotals: parsed.playerTotals || {},
+        badges: Array.isArray(parsed.badges) ? parsed.badges : []
+      };
+    } catch {
+      return defaultStats();
+    }
+  }
+
+  function saveStats() {
+    try {
+      localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
+    } catch {
+      // Storage may be full or unavailable (private browsing) — fail silently
+    }
+  }
+
+  // Tracks per-player totals by name. `won` is true only for the winner.
+  function bumpPlayerTotal(name, won) {
+    if (!stats.playerTotals[name]) {
+      stats.playerTotals[name] = { games: 0, wins: 0 };
+    }
+    stats.playerTotals[name].games += 1;
+    if (won) stats.playerTotals[name].wins += 1;
+  }
+
+  // Called once per completed match (win or draw) to update every metric.
+  // `winnerMark` is null for draws. `elapsedMs` is the time taken for this round.
+  function recordStatsForMatch({ result, winnerMark, moves, elapsedMs }) {
+    stats.totalGames += 1;
+    stats.totalMoves += moves;
+    stats.totalTimeMs += Math.max(0, elapsedMs);
+
+    const xName = nameFor("x");
+    const oName = nameFor("o");
+
+    if (result === "win") {
+      stats.totalWins += 1;   // "wins" here counts completed decisive games
+      stats.totalLosses += 1; // every win has a corresponding loss for the other side
+
+      stats.currentStreak += 1;
+      stats.longestStreak = Math.max(stats.longestStreak, stats.currentStreak);
+
+      if (stats.fastestWinMoves === null || moves < stats.fastestWinMoves) {
+        stats.fastestWinMoves = moves;
+      }
+
+      // AI-specific tracking — only relevant in PvC mode
+      if (gameMode === "pvc" && (difficulty === "easy" || difficulty === "medium" || difficulty === "hard")) {
+        if (winnerMark === AI_MARK) {
+          stats.ai[difficulty].wins += 1;   // AI won → human lost
+        } else {
+          stats.ai[difficulty].losses += 1; // human won → AI lost
+        }
+      }
+
+      bumpPlayerTotal(xName, winnerMark === "x");
+      bumpPlayerTotal(oName, winnerMark === "o");
+    } else {
+      // Draw — no streak change is a loss of streak (any non-win resets it)
+      stats.totalDraws += 1;
+      stats.currentStreak = 0;
+
+      bumpPlayerTotal(xName, false);
+      bumpPlayerTotal(oName, false);
+    }
+
+    // Re-evaluate achievement badges and capture any newly unlocked ones
+    const newlyEarned = [];
+    BADGE_DEFS.forEach((badge) => {
+      if (!earnedBadgeIds.has(badge.id) && badge.test(stats)) {
+        earnedBadgeIds.add(badge.id);
+        newlyEarned.push(badge.id);
+      }
+    });
+    stats.badges = Array.from(earnedBadgeIds);
+
+    saveStats();
+    renderStats(newlyEarned);
+  }
+
+  function formatDuration(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}m ${seconds}s`;
+  }
+
+  function difficultyDisplayName(level) {
+    return level.charAt(0).toUpperCase() + level.slice(1);
+  }
+
+  // Builds the three AI difficulty rows (Easy / Medium / Hard), each with
+  // its own win/loss record and a progress bar showing win rate against
+  // that difficulty.
+  function renderAiStats() {
+    aiStatsListEl.innerHTML = "";
+    ["easy", "medium", "hard"].forEach((level) => {
+      const record = stats.ai[level];
+      const total = record.wins + record.losses;
+      const winPct = total === 0 ? 0 : Math.round((record.wins / total) * 100);
+
+      const row = document.createElement("div");
+      row.className = "ai-stat-row";
+
+      const top = document.createElement("div");
+      top.className = "ai-stat-row__top";
+
+      const title = document.createElement("span");
+      title.className = "ai-stat-row__title";
+      title.textContent = `${difficultyDisplayName(level)} AI`;
+
+      const recordSpan = document.createElement("span");
+      recordSpan.className = "ai-stat-row__record";
+      recordSpan.textContent = total === 0
+        ? "No games yet"
+        : `${record.wins}W – ${record.losses}L · ${winPct}%`;
+
+      top.append(title, recordSpan);
+
+      const track = document.createElement("div");
+      track.className = "progress-track";
+
+      const fill = document.createElement("div");
+      fill.className = `progress-fill progress-fill--${level}`;
+      fill.style.width = `${winPct}%`;
+
+      track.appendChild(fill);
+      row.append(top, track);
+      aiStatsListEl.appendChild(row);
+    });
+  }
+
+  // Builds player rows sorted by games played (most played first). Crowns
+  // the most-played and most-successful (highest win rate, min 1 game) players.
+  function renderPlayerStats() {
+    playerStatsListEl.innerHTML = "";
+
+    const entries = Object.entries(stats.playerTotals);
+    if (entries.length === 0) return;
+
+    const mostPlayed = entries.reduce((best, cur) =>
+      cur[1].games > best[1].games ? cur : best
+    );
+    const mostSuccessful = entries.reduce((best, cur) => {
+      const curRate = cur[1].games > 0 ? cur[1].wins / cur[1].games : 0;
+      const bestRate = best[1].games > 0 ? best[1].wins / best[1].games : 0;
+      return curRate > bestRate ? cur : best;
+    });
+
+    const sorted = entries.slice().sort((a, b) => b[1].games - a[1].games);
+
+    sorted.forEach(([name, record]) => {
+      const winRate = record.games > 0 ? Math.round((record.wins / record.games) * 100) : 0;
+
+      const row = document.createElement("div");
+      row.className = "player-stat-row";
+
+      // Try to reuse a current avatar if the name matches a live player profile
+      const avatarEmoji =
+        name === players.x.name ? players.x.avatar :
+        name === players.o.name ? players.o.avatar : "👤";
+
+      const avatar = document.createElement("span");
+      avatar.className = "player-stat-row__avatar";
+      avatar.textContent = avatarEmoji;
+      avatar.setAttribute("aria-hidden", "true");
+
+      const info = document.createElement("div");
+      info.className = "player-stat-row__info";
+
+      const nameEl = document.createElement("div");
+      nameEl.className = "player-stat-row__name";
+      nameEl.textContent = name;
+
+      const detail = document.createElement("div");
+      detail.className = "player-stat-row__detail";
+      detail.textContent = `${record.games} games · ${record.wins} wins · ${winRate}% win rate`;
+
+      info.append(nameEl, detail);
+      row.append(avatar, info);
+
+      // Crown icons for most-played / most-successful (can both apply to the same player)
+      const crowns = [];
+      if (name === mostPlayed[0]) crowns.push("🎮");
+      if (name === mostSuccessful[0] && mostSuccessful[1].wins > 0) crowns.push("👑");
+      if (crowns.length) {
+        const crownSpan = document.createElement("span");
+        crownSpan.className = "player-stat-row__crown";
+        crownSpan.textContent = crowns.join(" ");
+        crownSpan.setAttribute("aria-hidden", "true");
+        row.appendChild(crownSpan);
+      }
+
+      playerStatsListEl.appendChild(row);
+    });
+  }
+
+  // Renders all 5 achievement badges, greying out ones not yet earned.
+  // `newlyEarnedIds` (optional) triggers a pop-in animation for fresh unlocks.
+  function renderBadges(newlyEarnedIds = []) {
+    badgeGridEl.innerHTML = "";
+    BADGE_DEFS.forEach((badge) => {
+      const earned = earnedBadgeIds.has(badge.id);
+      const el = document.createElement("div");
+      el.className = "badge" + (earned ? " is-earned" : "");
+      if (newlyEarnedIds.includes(badge.id)) el.classList.add("is-new");
+
+      const icon = document.createElement("span");
+      icon.className = "badge__icon";
+      icon.textContent = badge.icon;
+      icon.setAttribute("aria-hidden", "true");
+
+      const label = document.createElement("span");
+      label.className = "badge__label";
+      label.textContent = badge.label;
+
+      el.append(icon, label);
+      el.setAttribute("aria-label", `${badge.label} — ${earned ? "earned" : "locked"}`);
+      badgeGridEl.appendChild(el);
+    });
+  }
+
+  // Animates a stat card's value briefly to draw attention to the update.
+  function bumpStatValue(el) {
+    el.classList.remove("is-bumped");
+    void el.offsetWidth; // eslint-disable-line no-unused-expressions
+    el.classList.add("is-bumped");
+  }
+
+  // Master render — pulls every number from `stats` onto the dashboard.
+  // `newlyEarnedBadgeIds` is passed through after a match completes so
+  // freshly-unlocked badges get the pop-in animation; omitted on a plain
+  // panel-open repaint.
+  function renderStats(newlyEarnedBadgeIds = []) {
+    const hasGames = stats.totalGames > 0;
+    statsEmptyEl.classList.toggle("is-hidden", hasGames);
+    statsContentEl.classList.toggle("is-hidden", !hasGames);
+    if (!hasGames) return;
+
+    // Overall
+    statTotalGamesEl.textContent  = stats.totalGames;
+    statTotalWinsEl.textContent   = stats.totalWins;
+    statTotalLossesEl.textContent = stats.totalLosses;
+    statTotalDrawsEl.textContent  = stats.totalDraws;
+
+    const winRate  = Math.round((stats.totalWins  / stats.totalGames) * 100);
+    const drawRate = Math.round((stats.totalDraws / stats.totalGames) * 100);
+    statWinRateLabelEl.textContent  = `${winRate}%`;
+    statDrawRateLabelEl.textContent = `${drawRate}%`;
+    statWinRateBarEl.style.width  = `${winRate}%`;
+    statDrawRateBarEl.style.width = `${drawRate}%`;
+
+    // Performance
+    statCurrentStreakEl.textContent = stats.currentStreak;
+    statLongestStreakEl.textContent = stats.longestStreak;
+    statAvgMovesEl.textContent = (stats.totalMoves / stats.totalGames).toFixed(1);
+    statFastestWinEl.textContent = stats.fastestWinMoves === null ? "—" : `${stats.fastestWinMoves} moves`;
+    statTotalTimeEl.textContent = formatDuration(stats.totalTimeMs);
+
+    // Bump animation on every visible value to signal a fresh update
+    [
+      statTotalGamesEl, statTotalWinsEl, statTotalLossesEl, statTotalDrawsEl,
+      statCurrentStreakEl, statLongestStreakEl, statAvgMovesEl, statFastestWinEl, statTotalTimeEl
+    ].forEach(bumpStatValue);
+
+    renderAiStats();
+    renderPlayerStats();
+    renderBadges(newlyEarnedBadgeIds);
+  }
+
+  function openStats() {
+    renderStats();
+    statsOverlay.classList.remove("is-exiting");
+    statsOverlay.classList.add("is-open");
+    statsOverlay.removeAttribute("aria-hidden");
+  }
+
+  function closeStats() {
+    statsOverlay.classList.add("is-exiting");
+    setTimeout(() => {
+      statsOverlay.classList.remove("is-open", "is-exiting");
+      statsOverlay.setAttribute("aria-hidden", "true");
+    }, 220);
+  }
+
+  // ============================================
+  // Reset-statistics confirmation dialog (NEW)
+  // ============================================
+  function openConfirmDialog() {
+    confirmOverlay.classList.remove("is-exiting");
+    confirmOverlay.classList.add("is-open");
+    confirmOverlay.removeAttribute("aria-hidden");
+  }
+
+  function closeConfirmDialog() {
+    confirmOverlay.classList.add("is-exiting");
+    setTimeout(() => {
+      confirmOverlay.classList.remove("is-open", "is-exiting");
+      confirmOverlay.setAttribute("aria-hidden", "true");
+    }, 180);
+  }
+
+  function performStatsReset() {
+    stats = defaultStats();
+    earnedBadgeIds = new Set();
+    saveStats();
+    renderStats();
+    closeConfirmDialog();
+  }
+
+  // ============================================
   // Audio
   // ============================================
   const audioCache = {};
@@ -796,6 +1223,12 @@
       cells.forEach((cell) => (cell.disabled = true));
       updateActiveScoreCard();
       recordMatch({ result: "win", winnerMark: result.winner }); // NEW — log to match history
+      recordStatsForMatch({               // NEW — update statistics dashboard
+        result: "win",
+        winnerMark: result.winner,
+        moves: moveCount,
+        elapsedMs: Date.now() - roundStartTime
+      });
       return;
     }
 
@@ -810,6 +1243,12 @@
       updateStatus(`${nameFor("x")} vs ${nameFor("o")} — draw!`, "draw");
       updateActiveScoreCard();
       recordMatch({ result: "draw", winnerMark: null }); // NEW — log to match history
+      recordStatsForMatch({               // NEW — update statistics dashboard
+        result: "draw",
+        winnerMark: null,
+        moves: moveCount,
+        elapsedMs: Date.now() - roundStartTime
+      });
       return;
     }
 
@@ -843,6 +1282,7 @@
     gameOver      = false;
     aiThinking    = false;
     moveCount     = 0; // NEW — reset move tally for the new round
+    roundStartTime = Date.now(); // NEW — restart the clock for time-played tracking
     hideWinLine();
     renderBoard();
     updateStatus(`${nameFor("x")}'s turn`);
@@ -911,8 +1351,25 @@
     // Click on the dimmed backdrop (not the panel itself) closes the panel
     if (e.target === historyOverlay) closeHistory();
   });
+
+  // Statistics dashboard events (NEW)
+  statsBtn.addEventListener("click", openStats);
+  closeStatsBtn.addEventListener("click", closeStats);
+  statsOverlay.addEventListener("click", (e) => {
+    if (e.target === statsOverlay) closeStats();
+  });
+  resetStatsBtn.addEventListener("click", openConfirmDialog);
+  confirmCancelBtn.addEventListener("click", closeConfirmDialog);
+  confirmResetBtn.addEventListener("click", performStatsReset);
+  confirmOverlay.addEventListener("click", (e) => {
+    if (e.target === confirmOverlay) closeConfirmDialog();
+  });
+
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && historyOverlay.classList.contains("is-open")) closeHistory();
+    if (e.key !== "Escape") return;
+    if (confirmOverlay.classList.contains("is-open")) { closeConfirmDialog(); return; }
+    if (statsOverlay.classList.contains("is-open"))   { closeStats(); return; }
+    if (historyOverlay.classList.contains("is-open")) { closeHistory(); }
   });
 
   modeButtons.forEach((btn) =>
@@ -948,6 +1405,7 @@
   updateMuteButton();
   updateMetaMode();
   renderHistory(); // NEW — populate history panel from localStorage on load
+  renderStats();   // NEW — populate statistics dashboard from localStorage on load
 
   // Show welcome screen on first load
   openWelcome();

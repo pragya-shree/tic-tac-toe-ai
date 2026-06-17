@@ -164,6 +164,7 @@
       <button class="btn btn--ghost"   id="resetScoreBtn">Reset scores</button>
       <button class="btn btn--ghost"   id="editPlayersBtn">Edit players</button>
       <button class="btn btn--ghost"   id="historyBtn">Match history</button>
+      <button class="btn btn--ghost"   id="statsBtn">Statistics</button>
       <span class="controls__divider" aria-hidden="true"></span>
       <button class="btn btn--icon" id="muteBtn" aria-pressed="false" aria-label="Mute sound">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 9 8 9 13 4 13 20 8 15 3 15 3 9"></polygon><path d="M16 8a5 5 0 0 1 0 8"></path><path d="M19 5a9 9 0 0 1 0 14"></path></svg>
@@ -204,6 +205,160 @@
         <button class="btn btn--ghost" id="clearHistoryBtn">Clear history</button>
       </footer>
     </aside>
+  </div>
+
+  <!-- ============================================
+       Statistics Dashboard Panel
+       ============================================ -->
+  <div class="stats-overlay" id="statsOverlay" aria-hidden="true">
+    <aside
+      class="stats-panel"
+      id="statsPanel"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Statistics dashboard"
+    >
+      <header class="stats-panel__header">
+        <div>
+          <p class="eyebrow">Performance ledger</p>
+          <h2 class="stats-title">Statistics</h2>
+        </div>
+        <button class="btn btn--icon" id="closeStatsBtn" aria-label="Close statistics">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </header>
+
+      <div class="stats-body" id="statsBody">
+
+        <!-- No-data empty state -->
+        <p class="stats-empty" id="statsEmpty">No games played yet. Finish a round to start building your stats.</p>
+
+        <div class="stats-content" id="statsContent">
+
+          <!-- Overall Statistics -->
+          <section class="stats-section" aria-label="Overall statistics">
+            <h3 class="stats-section__title">📊 Overall</h3>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-card__icon">🎮</span>
+                <span class="stat-card__value" id="statTotalGames">0</span>
+                <span class="stat-card__label">Games played</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-card__icon">✅</span>
+                <span class="stat-card__value" id="statTotalWins">0</span>
+                <span class="stat-card__label">Total wins</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-card__icon">❌</span>
+                <span class="stat-card__value" id="statTotalLosses">0</span>
+                <span class="stat-card__label">Total losses</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-card__icon">🤝</span>
+                <span class="stat-card__value" id="statTotalDraws">0</span>
+                <span class="stat-card__label">Total draws</span>
+              </div>
+            </div>
+
+            <div class="progress-block">
+              <div class="progress-row">
+                <span class="progress-row__label">Win rate</span>
+                <span class="progress-row__value" id="statWinRateLabel">0%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill progress-fill--win" id="statWinRateBar" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="progress-block">
+              <div class="progress-row">
+                <span class="progress-row__label">Draw rate</span>
+                <span class="progress-row__value" id="statDrawRateLabel">0%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill progress-fill--draw" id="statDrawRateBar" style="width: 0%"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Performance Statistics -->
+          <section class="stats-section" aria-label="Performance statistics">
+            <h3 class="stats-section__title">🏆 Performance</h3>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-card__icon">🔥</span>
+                <span class="stat-card__value" id="statCurrentStreak">0</span>
+                <span class="stat-card__label">Current win streak</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-card__icon">⭐</span>
+                <span class="stat-card__value" id="statLongestStreak">0</span>
+                <span class="stat-card__label">Longest win streak</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-card__icon">📐</span>
+                <span class="stat-card__value" id="statAvgMoves">0</span>
+                <span class="stat-card__label">Avg. moves / game</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-card__icon">⚡</span>
+                <span class="stat-card__value" id="statFastestWin">—</span>
+                <span class="stat-card__label">Fastest victory</span>
+              </div>
+              <div class="stat-card stat-card--wide">
+                <span class="stat-card__icon">⏱️</span>
+                <span class="stat-card__value" id="statTotalTime">0m 0s</span>
+                <span class="stat-card__label">Total time played</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- AI Statistics -->
+          <section class="stats-section" aria-label="AI statistics" id="aiStatsSection">
+            <h3 class="stats-section__title">🤖 Vs. AI</h3>
+            <div class="ai-stats-list" id="aiStatsList">
+              <!-- Rows injected by JS: one per difficulty -->
+            </div>
+          </section>
+
+          <!-- Player Statistics -->
+          <section class="stats-section" aria-label="Player statistics">
+            <h3 class="stats-section__title">👤 Players</h3>
+            <div class="player-stats-list" id="playerStatsList">
+              <!-- Rows injected by JS -->
+            </div>
+          </section>
+
+          <!-- Achievements -->
+          <section class="stats-section" aria-label="Achievements">
+            <h3 class="stats-section__title">🏅 Achievements</h3>
+            <div class="badge-grid" id="badgeGrid">
+              <!-- Badges injected by JS -->
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      <footer class="stats-panel__footer">
+        <button class="btn btn--ghost" id="resetStatsBtn">Reset statistics</button>
+      </footer>
+    </aside>
+  </div>
+
+  <!-- ============================================
+       Confirmation Dialog (reset statistics)
+       ============================================ -->
+  <div class="confirm-overlay" id="confirmOverlay" aria-hidden="true">
+    <div class="confirm-card" role="alertdialog" aria-modal="true" aria-label="Confirm reset statistics">
+      <p class="confirm-title">Reset all statistics?</p>
+      <p class="confirm-body">This permanently clears every recorded stat — games, streaks, AI records, player totals, and achievements. This can't be undone.</p>
+      <div class="confirm-actions">
+        <button class="btn btn--ghost" id="confirmCancelBtn">Cancel</button>
+        <button class="btn btn--danger" id="confirmResetBtn">Reset everything</button>
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>
