@@ -84,16 +84,6 @@ git clone https://github.com/pragya-shree/tic-tac-toe-ai.git
 
 No additional installation is required.
 
-## 📸 Screenshots
-
-Add screenshots of:
-
-* Welcome Screen
-* Gameplay Screen
-* AI Mode
-* Match History Dashboard
-* Winning Screen
-
 ## 🎯 Future Improvements
 
 * Online Multiplayer
