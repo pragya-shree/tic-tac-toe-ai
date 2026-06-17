@@ -1,50 +1,121 @@
-{# tic-tac-toe-ai
-Modern Tic-Tac-Toe game with AI opponent, Minimax algorithm, custom player profiles, sound effects, and responsive UI.}
-# 🎮 Tic-Tac-Toe
+# 🎮 Tic-Tac-Toe AI
 
-A modern Tic-Tac-Toe web application built using HTML, CSS, and JavaScript.
+A modern and interactive Tic-Tac-Toe web application built using **HTML, CSS, and JavaScript**. The project features multiple AI difficulty levels, player customization, match history tracking, game statistics, sound effects, and a responsive user interface.
 
-## ✨ Features
+## 🚀 Features
 
-- Human vs Human Mode
-- Human vs AI Mode
-- Easy, Medium, and Hard AI Difficulty
-- Minimax Algorithm (Hard Mode)
-- Custom Player Names
-- Avatar Selection
-- Scoreboard
-- Sound Effects
-- Winning Animations
-- Responsive Design
-- Modern UI
+### 🎯 Gameplay
 
-## 🛠 Technologies Used
+* Human vs Human Mode
+* Human vs AI Mode
+* Easy, Medium, and Hard AI Difficulty Levels
+* Minimax Algorithm for optimal AI gameplay
+* Win and Draw Detection
+* Restart Game Functionality
 
-- HTML5
-- CSS3
-- JavaScript
+### 👤 Player Customization
 
-## 🚀 How to Run
+* Custom Player Names
+* Avatar Selection
+* Personalized Turn Indicators
+* Personalized Win Messages
 
-1. Download or clone the repository
+### 📊 Statistics & History
 
-```bash
-git clone <repository-url>
+* Match History Tracking
+* Stores Previous Games using Local Storage
+* Total Games Played
+* Wins, Losses, and Draw Statistics
+* Recent Match Records
+* Clear History Option
+
+### 🎨 User Interface
+
+* Modern Responsive Design
+* Mobile-Friendly Layout
+* Smooth Animations
+* Hover Effects
+* Winning Cell Highlights
+* Attractive Color Palette
+* Dark Mode Support
+* Professional Typography
+
+### 🔊 Audio
+
+* Move Sound Effects
+* Victory Sound Effects
+* Draw Sound Effects
+
+## 🛠️ Technologies Used
+
+* HTML5
+* CSS3
+* JavaScript (ES6)
+* Local Storage API
+
+## 📂 Project Structure
+
+```text
+tic-tac-toe-ai/
+│
+├── index.html
+├── style.css
+├── script.js
+├── click.wav
+├── draw.wav
+├── win.wav
+├── screenshots/
+└── README.md
 ```
 
-2. Open `index.html` in your browser.
+## ▶️ How to Run
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/pragya-shree/tic-tac-toe-ai.git
+```
+
+2. Open the project folder.
+
+3. Launch `index.html` in your browser.
+
+No additional installation is required.
 
 ## 📸 Screenshots
 
-Add screenshots here after uploading them.
+Add screenshots of:
+
+* Welcome Screen
+* Gameplay Screen
+* AI Mode
+* Match History Dashboard
+* Winning Screen
 
 ## 🎯 Future Improvements
 
-- Online Multiplayer
-- Global Leaderboard
-- Player Statistics
-- Achievement System
+* Online Multiplayer
+* Global Leaderboard
+* User Accounts
+* Cloud Save Support
+* Achievement System
+* Tournament Mode
+
+## 📚 Key Concepts Demonstrated
+
+* DOM Manipulation
+* Event Handling
+* State Management
+* Local Storage
+* Game Logic
+* Minimax Algorithm
+* Responsive Web Design
+* Frontend Development
 
 ## 👨‍💻 Author
 
-Pragya Shree
+**Pragya Shree**
+
+AI Student passionate about software development, problem-solving, and building interactive web applications.
+
+⭐ If you like this project, consider giving it a star!
