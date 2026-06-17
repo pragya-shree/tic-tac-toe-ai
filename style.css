@@ -780,3 +780,180 @@ body {
     font-size: 1.15rem;
   }
 }
+
+/* ============================================
+   Match History Panel
+   ============================================ */
+@keyframes history-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes history-panel-in {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes history-entry-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.history-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: stretch;
+  justify-content: flex-end;
+  background: rgba(15, 20, 28, 0.38);
+  backdrop-filter: blur(2px);
+  animation: history-overlay-in 0.25s var(--ease) both;
+}
+
+.history-overlay.is-open {
+  display: flex;
+}
+
+.history-overlay.is-exiting {
+  pointer-events: none;
+  animation: history-overlay-in 0.2s var(--ease) reverse both;
+}
+
+.history-panel {
+  width: 100%;
+  max-width: 400px;
+  height: 100%;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow-deep);
+  display: flex;
+  flex-direction: column;
+  animation: history-panel-in 0.32s var(--ease) 0.02s both;
+  transition: background-color 0.45s var(--ease), border-color 0.45s var(--ease);
+}
+
+.history-overlay.is-exiting .history-panel {
+  animation: history-panel-in 0.22s var(--ease) reverse both;
+}
+
+.history-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 22px 16px;
+  border-bottom: 1px solid var(--line);
+  transition: border-color 0.45s var(--ease);
+}
+
+.history-title {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-empty {
+  margin: 40px 12px 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.history-entry {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 13px 15px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: history-entry-in 0.3s var(--ease) both;
+  transition: border-color 0.3s var(--ease), background-color 0.45s var(--ease);
+}
+
+.history-entry--win {
+  border-left: 3px solid var(--accent);
+}
+
+.history-entry--draw {
+  border-left: 3px solid var(--ink-muted);
+}
+
+.history-entry__headline {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.history-entry__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.history-entry__meta span {
+  white-space: nowrap;
+}
+
+.history-panel__footer {
+  padding: 16px 22px 22px;
+  border-top: 1px solid var(--line);
+  transition: border-color 0.45s var(--ease);
+}
+
+.history-panel__footer .btn {
+  width: 100%;
+}
+
+/* Scrollbar styling for the history list (WebKit) */
+.history-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.history-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-list::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+
+@media (max-width: 460px) {
+  .history-panel {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-overlay,
+  .history-panel,
+  .history-entry {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+

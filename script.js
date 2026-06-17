@@ -25,6 +25,8 @@
   const MUTE_STORAGE_KEY    = "ttt-muted";
   const THEME_STORAGE_KEY   = "ttt-theme";
   const PLAYERS_STORAGE_KEY = "ttt-players"; // NEW — persists player profiles
+  const HISTORY_STORAGE_KEY = "ttt-history"; // NEW — persists match history (localStorage)
+  const HISTORY_LIMIT       = 20;             // NEW — cap stored matches at 20
 
   const SOUND_SOURCES = {
     click: "sounds/click.wav",
@@ -107,12 +109,14 @@
   let board         = Array(9).fill(null);
   let currentPlayer = "x";
   let gameOver      = false;
+  let moveCount      = 0; // NEW — tracks moves played this round for history logging
   let scores        = loadScores();
   let muted         = loadMuted();
   let theme         = loadTheme();
   let gameMode      = "pvp";   // "pvp" | "pvc"
   let difficulty    = "easy";  // "easy" | "medium" | "hard"
   let aiThinking    = false;
+  let matchHistory  = loadHistory(); // NEW — array of completed match records
 
   // ============================================
   // DOM refs — game screen
@@ -145,6 +149,14 @@
   const scoreDrawValueEl= document.getElementById("scoreDrawValue");
 
   const gameApp         = document.getElementById("gameApp");
+
+  // DOM refs — match history panel (NEW)
+  const historyBtn       = document.getElementById("historyBtn");
+  const historyOverlay   = document.getElementById("historyOverlay");
+  const closeHistoryBtn  = document.getElementById("closeHistoryBtn");
+  const clearHistoryBtn  = document.getElementById("clearHistoryBtn");
+  const historyListEl    = document.getElementById("historyList");
+  const historyEmptyEl   = document.getElementById("historyEmpty");
 
   // DOM refs — welcome screen
   const welcomeOverlay       = document.getElementById("welcomeOverlay");
@@ -361,6 +373,142 @@
 
   function saveTheme() {
     try { sessionStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* noop */ }
+  }
+
+  // ============================================
+  // Match History (NEW)
+  // Persisted to localStorage (not sessionStorage) so history survives
+  // across browser sessions / tab closes, per requirement.
+  // ============================================
+  function loadHistory() {
+    try {
+      const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveHistory() {
+    try {
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(matchHistory));
+    } catch {
+      // Storage may be full or unavailable (private browsing) — fail silently
+    }
+  }
+
+  // Builds a single match record and prepends it to history (most recent first),
+  // then trims to the most recent HISTORY_LIMIT entries.
+  function recordMatch({ result, winnerMark }) {
+    const record = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: Date.now(),
+      mode: gameMode,                                  // "pvp" | "pvc"
+      difficulty: gameMode === "pvc" ? difficulty : null,
+      playerXName: nameFor("x"),
+      playerOName: nameFor("o"),
+      moves: moveCount,
+      result,                                          // "win" | "draw"
+      winnerName: result === "win" ? nameFor(winnerMark) : null,
+      winnerMark: result === "win" ? winnerMark : null
+    };
+
+    matchHistory.unshift(record);
+    if (matchHistory.length > HISTORY_LIMIT) {
+      matchHistory = matchHistory.slice(0, HISTORY_LIMIT);
+    }
+    saveHistory();
+    renderHistory();
+  }
+
+  function formatHistoryDate(timestamp) {
+    const d = new Date(timestamp);
+    const datePart = d.toLocaleDateString("en-GB", {
+      day: "numeric", month: "long", year: "numeric"
+    });
+    const timePart = d.toLocaleTimeString("en-US", {
+      hour: "numeric", minute: "2-digit", hour12: true
+    });
+    return `${datePart}, ${timePart}`;
+  }
+
+  function modeLabel(record) {
+    if (record.mode === "pvc") {
+      const diff = record.difficulty
+        ? record.difficulty.charAt(0).toUpperCase() + record.difficulty.slice(1)
+        : "";
+      return `Human vs AI (${diff})`;
+    }
+    return "Human vs Human";
+  }
+
+  function buildHistoryEntry(record) {
+    const entry = document.createElement("article");
+    entry.className = `history-entry history-entry--${record.result}`;
+
+    const headline = document.createElement("p");
+    headline.className = "history-entry__headline";
+
+    if (record.result === "win") {
+      const loserName = record.winnerMark === "x" ? record.playerOName : record.playerXName;
+      headline.textContent = `🏆 ${record.winnerName} defeated ${loserName}`;
+    } else {
+      headline.textContent = `🤝 ${record.playerXName} vs ${record.playerOName} ended in a draw`;
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "history-entry__meta";
+
+    const modeSpan  = document.createElement("span");
+    modeSpan.textContent = `Mode: ${modeLabel(record)}`;
+
+    const movesSpan = document.createElement("span");
+    movesSpan.textContent = `Moves: ${record.moves}`;
+
+    const dateSpan  = document.createElement("span");
+    dateSpan.textContent = `Date: ${formatHistoryDate(record.timestamp)}`;
+
+    meta.append(modeSpan, movesSpan, dateSpan);
+    entry.append(headline, meta);
+    return entry;
+  }
+
+  function renderHistory() {
+    // Clear existing entries (but keep the empty-state element around to toggle)
+    Array.from(historyListEl.querySelectorAll(".history-entry")).forEach((el) => el.remove());
+
+    if (matchHistory.length === 0) {
+      historyEmptyEl.style.display = "block";
+      return;
+    }
+
+    historyEmptyEl.style.display = "none";
+    matchHistory.forEach((record) => {
+      historyListEl.appendChild(buildHistoryEntry(record));
+    });
+  }
+
+  function openHistory() {
+    renderHistory();
+    historyOverlay.classList.remove("is-exiting");
+    historyOverlay.classList.add("is-open");
+    historyOverlay.removeAttribute("aria-hidden");
+  }
+
+  function closeHistory() {
+    historyOverlay.classList.add("is-exiting");
+    setTimeout(() => {
+      historyOverlay.classList.remove("is-open", "is-exiting");
+      historyOverlay.setAttribute("aria-hidden", "true");
+    }, 220);
+  }
+
+  function clearHistory() {
+    matchHistory = [];
+    saveHistory();
+    renderHistory();
   }
 
   // ============================================
@@ -628,6 +776,7 @@
 
   function makeMove(index) {
     board[index] = currentPlayer;
+    moveCount += 1;
     renderBoard();
     playSound("click");
 
@@ -646,6 +795,7 @@
       updateStatus(`${nameFor(result.winner)} wins! ${avatarFor(result.winner)}`, result.winner);
       cells.forEach((cell) => (cell.disabled = true));
       updateActiveScoreCard();
+      recordMatch({ result: "win", winnerMark: result.winner }); // NEW — log to match history
       return;
     }
 
@@ -659,6 +809,7 @@
       // Named draw message
       updateStatus(`${nameFor("x")} vs ${nameFor("o")} — draw!`, "draw");
       updateActiveScoreCard();
+      recordMatch({ result: "draw", winnerMark: null }); // NEW — log to match history
       return;
     }
 
@@ -691,6 +842,7 @@
     currentPlayer = "x";
     gameOver      = false;
     aiThinking    = false;
+    moveCount     = 0; // NEW — reset move tally for the new round
     hideWinLine();
     renderBoard();
     updateStatus(`${nameFor("x")}'s turn`);
@@ -751,6 +903,18 @@
   muteBtn.addEventListener("click", toggleMute);
   themeBtn.addEventListener("click", toggleTheme);
 
+  // Match history events (NEW)
+  historyBtn.addEventListener("click", openHistory);
+  closeHistoryBtn.addEventListener("click", closeHistory);
+  clearHistoryBtn.addEventListener("click", clearHistory);
+  historyOverlay.addEventListener("click", (e) => {
+    // Click on the dimmed backdrop (not the panel itself) closes the panel
+    if (e.target === historyOverlay) closeHistory();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && historyOverlay.classList.contains("is-open")) closeHistory();
+  });
+
   modeButtons.forEach((btn) =>
     btn.addEventListener("click", () => setMode(btn.dataset.mode))
   );
@@ -783,6 +947,7 @@
   updateActiveScoreCard();
   updateMuteButton();
   updateMetaMode();
+  renderHistory(); // NEW — populate history panel from localStorage on load
 
   // Show welcome screen on first load
   openWelcome();
